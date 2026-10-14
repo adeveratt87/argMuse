@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Argos Product Search MCP</title>
+  <meta name="description" content="Documentation for the read-only Argos product search MCP connector.">
+  <link rel="stylesheet" href="/playground.css">
+  <link rel="stylesheet" href="/docs/docs.css">
+  <script src="/docs/docs.js" defer></script>
+</head>
+<body>
+  <header class="top">
+    <h1>Argos Product Search: MCP connector</h1>
+    <p class="muted">Read-only search and product details from the Argos (UK) catalogue, over the Model Context Protocol.</p>
+    <nav class="toc" aria-label="Contents">
+      <a href="#overview">Overview</a>
+      <a href="#connect">Connecting</a>
+      <a href="#auth">Authentication</a>
+      <a href="#tools">Tools</a>
+      <a href="#errors">Errors</a>
+      <a href="#limits">Limits</a>
+      <a href="#data">Data &amp; privacy</a>
+      <a href="#testing">Testing</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="card" id="overview">
+      <h2>Overview</h2>
+      <p>This connector lets an AI assistant help a customer find products sold by Argos in the UK and look up their details. It exposes exactly two tools:</p>
+      <ul>
+        <li><strong><code>search</code></strong>: find products by keywords. Returns product IDs, names, prices in GBP and product page links.</li>
+        <li><strong><code>getProducts</code></strong>: full details for one product: name, link, plain-text description, price and any promotional badge code.</li>
+      </ul>
+      <p>Both tools are <strong>read-only</strong>. The connector cannot add to a basket, check out, place orders or change any account. Product data comes live from Argos on every call; nothing is cached.</p>
+      <p class="muted small">Example uses: “find me a cordless kettle under £30”, “what are the dimensions of product 8444015?”, “compare these two TVs”.</p>
+    </section>
+
+    <section class="card" id="connect">
+      <h2>Connecting</h2>
+      <dl class="kv">
+        <dt>MCP endpoint</dt><dd><code id="endpoint">https://argmuse.vercel.app/mcp</code></dd>
+        <dt>Transport</dt><dd>MCP Streamable HTTP (specification 2025-11-25), stateless. Each JSON-RPC message is a <code>POST</code> to the endpoint; responses are JSON. No session ID is issued and <code>GET</code> returns 405.</dd>
+        <dt>Required headers</dt><dd><code>Content-Type: application/json</code>, <code>Accept: application/json, text/event-stream</code>, <code>Authorization: Bearer &lt;access token&gt;</code></dd>
+        <dt>Capabilities</dt><dd><code>tools</code> only (no resources, prompts or sampling)</dd>
+        <dt>Batching</dt><dd>JSON-RPC batches are not supported (<code>-32600</code>)</dd>
+      </dl>
+    </section>
+
+    <section class="card" id="auth">
+      <h2>Authentication</h2>
+      <p>The connector is an OAuth 2.1 protected resource, following the <a href="https://modelcontextprotocol.io/specification/2025-11-25/basic/authorization">MCP authorization specification</a>. Users sign in once when they enable the connector; no Argos account is needed.</p>
+      <dl class="kv">
+        <dt>Discovery</dt><dd>An unauthenticated request receives <code>401</code> with <code>WWW-Authenticate: Bearer resource_metadata="…"</code> pointing to the <a id="prm-link" href="/.well-known/oauth-protected-resource/mcp">protected resource metadata</a> (RFC 9728).</dd>
+        <dt>Authorization server</dt><dd><code id="as-issuer">loading…</code></dd>
+        <dt>Flow</dt><dd>Authorization code with PKCE (<code>S256</code>). Send the <code>resource</code> parameter (RFC 8707) set to the MCP endpoint.</dd>
+        <dt>Client registration</dt><dd id="as-registration">Client ID Metadata Documents and Dynamic Client Registration</dd>
+        <dt>Scopes</dt><dd>None required by the connector. <code>openid offline_access</code> may be requested for refresh tokens.</dd>
+        <dt>Token checks</dt><dd>Signed JWT access tokens are validated for signature, issuer, audience (must equal the MCP endpoint), expiry and not-before. Invalid or expired tokens get <code>401</code>. Tokens are never forwarded to Argos.</dd>
+      </dl>
+    </section>
+
+    <section class="card" id="tools">
+      <h2>Tools</h2>
+      <p class="muted">Generated from the connector's live <code>tools/list</code> response (<a href="/docs/tools.json">tools.json</a>). Every successful result includes <code>structuredContent</code> matching the tool's <code>outputSchema</code>, plus a text block with the same JSON.</p>
+      <div id="tool-list"><p class="muted">Loading tool definitions…</p></div>
+
+      <h3>Example: <code>search</code></h3>
+      <pre class="code">// arguments
+{ "query": "cordless kettle", "limit": 2 }
+
+// structuredContent
+{
+  "products": [
+    { "id": "hm128582", "name": "Quest 1.7L Cordless Kettle - Grey", "price": 15.99,
+      "currency": "GBP", "url": "https://argos.co.uk/product/hm128582/" },
+    { "id": "97mv38m1", "name": "Quest 1.7L Cordless Kettle - Black", "price": 15.99,
+      "currency": "GBP", "url": "https://argos.co.uk/product/97mv38m1/" }
+  ],
+  "totalCount": 18
+}</pre>
+
+      <h3>Example: <code>getProducts</code></h3>
+      <pre class="code">// arguments
+{ "id": "8444015" }
+
+// structuredContent
+{
+  "product": {
+    "id": "8444015",
+    "name": "Argos Home Mouse In Skeleton Felt Hanging Decoration",
+    "url": "https://argos.co.uk/product/8444015/",
+    "description": "Mice to meet you. …\nNot suitable for children under 3 years old.\nSize H11, W11, D8cm.",
+    "price": 5,
+    "currency": "GBP",
+    "promotion": { "code": "VALUE_20_pc_spooky20", "label": null }
+  }
+}</pre>
+
+      <h3>Field rules</h3>
+      <ul>
+        <li><strong>Prices</strong> are numbers in GBP. A missing price is <code>null</code>, never <code>0</code>.</li>
+        <li><strong>URLs</strong> are Argos product pages on <code>argos.co.uk</code> only.</li>
+        <li><strong>Descriptions</strong> are converted from Argos's HTML to plain text. Markup and scripts are removed; safety warnings, age guidance and dimensions are kept.</li>
+        <li><strong>Promotions</strong>: the badge <code>code</code> is passed through exactly as Argos supplies it. <code>label</code> is <code>null</code>: no discount or offer is inferred from the code.</li>
+        <li><strong><code>totalCount</code></strong> is the total Argos reports, or <code>null</code> if it doesn't report one.</li>
+        <li>No stock, availability, delivery or rating information is provided.</li>
+      </ul>
+    </section>
+
+    <section class="card" id="errors">
+      <h2>Errors</h2>
+      <table class="tbl">
+        <thead><tr><th>Situation</th><th>Response</th></tr></thead>
+        <tbody>
+          <tr><td>Missing, invalid or expired token</td><td>HTTP 401 with <code>WWW-Authenticate</code></td></tr>
+          <tr><td>Disallowed browser <code>Origin</code></td><td>HTTP 403</td></tr>
+          <tr><td>Rate limit exceeded</td><td>HTTP 429 with <code>Retry-After</code></td></tr>
+          <tr><td>Request body over 64 KB</td><td>HTTP 413</td></tr>
+          <tr><td>Malformed JSON / batch request</td><td>JSON-RPC <code>-32700</code> / <code>-32600</code></td></tr>
+          <tr><td>Unknown tool or invalid arguments</td><td>Tool result with <code>isError: true</code> (<code>-32602</code> message)</td></tr>
+          <tr><td>No matches</td><td>Success with <code>products: []</code></td></tr>
+          <tr><td>Product not found</td><td><code>isError: true</code>: “Argos returned no details for product …”</td></tr>
+          <tr><td>Argos slow, busy or unavailable</td><td><code>isError: true</code> with a plain message and a reference ID</td></tr>
+          <tr><td>Argos data in an unexpected format</td><td><code>isError: true</code>; partial or guessed data is never returned</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card" id="limits">
+      <h2>Limits</h2>
+      <ul>
+        <li>Per user: 60 requests per minute. Overall: 600 per minute per server instance.</li>
+        <li><code>search</code>: query up to 200 characters; <code>limit</code> 1–50 (default 20).</li>
+        <li><code>getProducts</code>: one product ID per call (letters and digits, up to 20 characters).</li>
+        <li>Requests time out after about 15 seconds if Argos does not respond.</li>
+      </ul>
+    </section>
+
+    <section class="card" id="data">
+      <h2>Data &amp; privacy</h2>
+      <ul>
+        <li><strong>Sent to Argos:</strong> only the search text and limit, or the product ID. No user identity, token or personal data.</li>
+        <li><strong>Stored:</strong> nothing. There is no database, and results are not cached.</li>
+        <li><strong>Logged:</strong> request metadata only (time, status, duration, tool name, a one-way hash of the user ID). Search text, tokens and cookies are never logged.</li>
+        <li><strong>Sign-in:</strong> handled by WorkOS AuthKit; the connector only verifies the resulting token.</li>
+        <li><strong>Availability:</strong> UK catalogue, prices in GBP.</li>
+      </ul>
+    </section>
+
+    <section class="card" id="testing">
+      <h2>Testing</h2>
+      <p>The <a href="/">connector playground</a> runs live endpoint checks, signs in with the same OAuth flow, and lets you call both tools.</p>
+      <ol>
+        <li>Open the playground. All endpoint checks should pass.</li>
+        <li>Sign in (create an account with any email address).</li>
+        <li><code>search</code> for “cordless kettle”: expect typed products with GBP prices.</li>
+        <li><code>getProducts</code> for <code>8444015</code>: expect a plain-text description and a promotion code with no label.</li>
+        <li><code>getProducts</code> for <code>0000000</code>: expect an error result (product not found).</li>
+        <li>Send a request without a token: expect HTTP 401.</li>
+      </ol>
+    </section>
+  </main>
+
+  <footer class="muted small">Argos product search MCP connector · Read-only · <a href="/docs/tools.json">Machine-readable tool definitions</a></footer>
+</body>
+</html>

@@ -160,3 +160,20 @@ describe("playground support", () => {
     expect(post.status).toBe(405);
   });
 });
+
+describe("documentation endpoint", () => {
+  it("publishes exactly the advertised tools without auth or upstream calls", async () => {
+    const app = await createTestApp();
+    const res = await app.handlers.route(new Request(`${BASE}/docs/tools.json`));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.endpoint).toBe(`${BASE}/mcp`);
+    expect(body.tools.map((t: { name: string }) => t.name).sort()).toEqual(["getProducts", "search"]);
+    for (const t of body.tools) expect(t.outputSchema).toBeTruthy();
+    expect(app.mock.requests).toHaveLength(0);
+    // Same definitions an authenticated client receives from tools/list.
+    const client = await app.connectClient(await app.tokens.sign());
+    expect((await client.listTools()).tools).toEqual(body.tools);
+    expect((await app.handlers.route(new Request(`${BASE}/docs/tools.json`, { method: "POST" }))).status).toBe(405);
+  });
+});

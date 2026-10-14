@@ -27,6 +27,10 @@ Muse ──POST /mcp (Streamable HTTP, stateless, JSON)──▶ connector ─�
 
 Details: [`docs/tool-catalogue.md`](docs/tool-catalogue.md).
 
+## Documentation
+
+`https://argmuse.vercel.app/docs` is the public connector documentation for reviewers: connection, OAuth, tools, errors, limits, data handling and test steps. Its tool section is generated from `/docs/tools.json`, which returns exactly what `tools/list` advertises (taken from an in-process MCP client), so the published schemas cannot drift.
+
 ## Playground
 
 `https://argmuse.vercel.app/` is a test console (`public/`) for the connector. It:
