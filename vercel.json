@@ -15,6 +15,9 @@
     },
     "api/client-metadata.ts": {
       "maxDuration": 5
+    },
+    "api/tools-catalogue.ts": {
+      "maxDuration": 10
     }
   },
   "rewrites": [
@@ -37,6 +40,14 @@
     {
       "source": "/oauth/client-metadata.json",
       "destination": "/api/client-metadata"
+    },
+    {
+      "source": "/docs/tools.json",
+      "destination": "/api/tools-catalogue"
+    },
+    {
+      "source": "/docs",
+      "destination": "/docs/index.html"
     }
   ],
   "headers": [

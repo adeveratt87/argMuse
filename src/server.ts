@@ -13,6 +13,7 @@ import { AuthError } from "./auth/errors.js";
 import type { Principal, TokenVerifier } from "./auth/jwt-verifier.js";
 import { protectedResourceMetadata, wwwAuthenticate } from "./auth/resource-metadata.js";
 import { createConnectorServer } from "./mcp/connector-server.js";
+import { toolCatalogue } from "./mcp/tool-catalogue.js";
 import type { Upstream } from "./mcp/upstream-client.js";
 import { hashSubject, type Logger } from "./observability/logger.js";
 import { baseHeaders, errorResponse, JSONRPC } from "./security/http-errors.js";
@@ -223,6 +224,17 @@ export function createHandlers(deps: AppDeps) {
     });
   }
 
+  /** Public, read-only tool definitions (same as tools/list) for the documentation page. */
+  async function handleToolsCatalogue(req: Request): Promise<Response> {
+    const correlationId = randomUUID();
+    if (req.method !== "GET") return errorResponse(405, "Method not allowed", correlationId, { headers: { Allow: "GET" } });
+    const catalogue = await toolCatalogue();
+    return new Response(JSON.stringify({ endpoint: config.resourceUrl, ...catalogue }), {
+      status: 200,
+      headers: { "Content-Type": "application/json", ...baseHeaders(correlationId), "Cache-Control": "public, max-age=300" },
+    });
+  }
+
   /** Path router used by the local dev server and tests (Vercel routes by file). */
   async function route(req: Request): Promise<Response> {
     const { pathname } = new URL(req.url);
@@ -232,8 +244,9 @@ export function createHandlers(deps: AppDeps) {
     }
     if (pathname === "/health" || pathname === "/api/health") return handleHealth(req);
     if (pathname === "/oauth/client-metadata.json" || pathname === "/api/client-metadata") return handleClientMetadata(req);
+    if (pathname === "/docs/tools.json" || pathname === "/api/tools-catalogue") return handleToolsCatalogue(req);
     return errorResponse(404, "Not found", randomUUID());
   }
 
-  return { handleMcp, handleProtectedResourceMetadata, handleHealth, handleClientMetadata, route };
+  return { handleMcp, handleProtectedResourceMetadata, handleHealth, handleClientMetadata, handleToolsCatalogue, route };
 }

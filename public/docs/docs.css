@@ -1,0 +1,36 @@
+a { color: var(--accent); }
+h3 { font-size: 0.95rem; margin: 20px 0 0; }
+.card h2 { margin-bottom: 8px; }
+.card p, .card li { line-height: 1.6; }
+.card ul, .card ol { padding-left: 20px; }
+
+.toc { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 12px 0 0; font-size: 0.9rem; }
+.toc a { text-decoration: none; }
+
+.kv { display: grid; grid-template-columns: max-content 1fr; gap: 8px 16px; margin: 12px 0 0; }
+.kv dt { color: var(--muted); font-size: 0.9rem; }
+.kv dd { margin: 0; overflow-wrap: anywhere; }
+@media (max-width: 560px) {
+  .kv { grid-template-columns: 1fr; gap: 2px; }
+  .kv dd { margin-bottom: 10px; }
+}
+
+.tbl { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 0.9rem; }
+.tbl th, .tbl td { text-align: left; vertical-align: top; padding: 8px; border-top: 1px solid var(--border); overflow-wrap: anywhere; }
+.tbl th { color: var(--muted); font-weight: 600; }
+
+.tool { border-top: 1px solid var(--border); padding-top: 12px; margin-top: 16px; }
+.tool h3 { margin-top: 0; font-size: 1rem; }
+.badges { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
+.tool details { margin-top: 8px; }
+.tool summary { cursor: pointer; color: var(--muted); font-size: 0.9rem; }
+.req { color: var(--accent); font-weight: 700; }
+
+/* Narrow screens: schema tables become stacked cards. */
+@media (max-width: 560px) {
+  .tool .tbl thead { display: none; }
+  .tool .tbl tr { display: block; border-top: 1px solid var(--border); padding: 8px 0; }
+  .tool .tbl td { display: block; border: none; padding: 2px 0; }
+  .tool .tbl td:nth-child(2) { color: var(--muted); font-size: 0.85rem; }
+  .tool .tbl td:nth-child(3):empty { display: none; }
+}
