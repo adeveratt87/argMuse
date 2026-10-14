@@ -27,6 +27,16 @@ Muse ──POST /mcp (Streamable HTTP, stateless, JSON)──▶ connector ─�
 
 Details: [`docs/tool-catalogue.md`](docs/tool-catalogue.md).
 
+## Playground
+
+`https://argmuse.vercel.app/` is a test console (`public/`) for the connector. It:
+
+- checks every public endpoint, including that the advertised issuer exactly matches the authorization server's;
+- signs in through WorkOS the same way Muse does: discovery, then authorization code + PKCE, with the client identified by a Client ID Metadata Document (`/oauth/client-metadata.json`) or Dynamic Client Registration;
+- calls `search`, `getProducts` or raw JSON-RPC, showing product text as plain text.
+
+The token exchange runs in the browser, so `https://argmuse.vercel.app` must be an allowed CORS origin in WorkOS. Tokens stay in the tab's sessionStorage.
+
 ## Development
 
 Requires Node 22+.
