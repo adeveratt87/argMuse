@@ -55,3 +55,30 @@ Only results from commands actually run are recorded here.
 - Only JWT access tokens are supported (no opaque-token introspection).
 - Input limits (`limit` ≤ 50, ≤ 10 IDs, IDs ≤ 20 alphanumerics) are connector policy derived
   from reference evidence, not from a published upstream schema.
+
+## Structured output (schema review, 2026-10-14)
+
+Decisions: `getProducts` takes one ID and returns `{ product }`; search URLs are derived from the ID; a parse failure is an error result; the text block is the JSON of the structured result.
+
+| Criterion (schema review §8) | Status | Evidence |
+|---|---|---|
+| Both tools have verified input schemas | 🟡 PARTIAL | Connector input schemas tested. Upstream schemas still unverified (live `tools/list` not captured) |
+| Both tools advertise accurate output schemas | ✅ PASS | `tools/list` exposes `outputSchema` for both (protocol test) |
+| search returns a typed product array | ✅ PASS | protocol + unit tests |
+| getProducts returns structured product data | ✅ PASS | protocol + unit tests |
+| Structured output validates against its schema | ✅ PASS | SDK validates every result before sending; Ajv independently validates real results against the advertised JSON Schema (`tests/protocol/output-schema.test.ts`) |
+| Text compatibility output retained | ✅ PASS | Text block = JSON of the structured result (tested equal) |
+| Prices numeric, currency consistent | ✅ PASS | `parsePrice` tests (`£`, `Â£`, thousands separators); `GBP` only when price is set |
+| Missing prices and URLs not fabricated | ✅ PASS | Missing price → `null` (tested). URLs: only Argos links (host-checked) or the approved ID rule |
+| HTML descriptions sanitised | ✅ PASS | `htmlToText` tests: scripts, styles, comments, iframes, event handlers, encoded tags removed |
+| Safety warnings intact after sanitisation | ✅ PASS | Age warning, supervision note and dimensions preserved (tests) |
+| Promotion codes not misrepresented | ✅ PASS | Code passed through; `label` always `null`; no discount inferred |
+| Empty results differ from upstream failures | ✅ PASS | Empty → `products: []`; upstream `isError` → error result; unparseable → error result (tests) |
+| Pagination and counts match upstream semantics | 🟡 PARTIAL | No pagination (none upstream). `totalCount` passes Argos's figure through, but whether it is total or returned is unverified |
+| Invalid inputs rejected | ✅ PASS | protocol tests |
+| Credentials and sensitive data never in logs | ✅ PASS | log-capture tests; parse errors log only a reason |
+| Only the two read-only tools exposed | ✅ PASS | protocol tests |
+| Integration tests against approved upstream | ⛔ BLOCKED | Build environment cannot reach `api.argos.co.uk`; live tests are updated for structured output and ready (`npm run test:live`) |
+| End-to-end through the Meta connector flow | ⛔ BLOCKED | No Meta/Muse portal access yet |
+
+Commands: `npm run typecheck` ✅, `npm run lint` ✅, `npm test` ✅ 162 passed / 2 skipped (live), `npm audit` ✅ 0 vulnerabilities, Playwright browser run of the playground ✅ (search and getProducts rendered from `structuredContent`, no HTML injected).

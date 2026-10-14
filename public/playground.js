@@ -349,13 +349,40 @@ async function mcp(body, token) {
   return { res, body: parsed, ms };
 }
 
+const money = (p) => (p.price === null ? "no price" : `£${p.price.toFixed(2)}`);
+
+// Readable view of structuredContent. Plain text only (textContent), never HTML.
+function summarise(sc) {
+  if (Array.isArray(sc.products)) {
+    const head = `${sc.products.length} product(s) returned` + (sc.totalCount === null ? "" : ` · Argos reports ${sc.totalCount} total`);
+    return [head, "", ...sc.products.map((p) => `${p.name}\n  ${money(p)} · ID ${p.id}${p.url ? ` · ${p.url}` : ""}`)].join("\n");
+  }
+  if (sc.product) {
+    const p = sc.product;
+    return [
+      p.name,
+      `${money(p)} · ID ${p.id}`,
+      p.url,
+      p.promotion ? `Promotion code: ${p.promotion.code}${p.promotion.label ? ` (${p.promotion.label})` : " (no verified label)"}` : "No promotion",
+      "",
+      p.description ?? "(no description)",
+    ].join("\n");
+  }
+  return JSON.stringify(sc, null, 2);
+}
+
 function showResponse({ res, body, ms }) {
   const cid = res.headers.get("x-correlation-id");
   $("resp-meta").textContent = `HTTP ${res.status} · ${ms} ms${cid ? ` · ref ${cid}` : ""}`;
   $("resp-body").textContent = typeof body === "string" ? body : JSON.stringify(body, null, 2);
   const textBox = $("resp-text");
   const content = body?.result?.content;
-  if (Array.isArray(content)) {
+  const structured = body?.result?.structuredContent;
+  if (structured && !body.result.isError) {
+    textBox.textContent = summarise(structured);
+    textBox.className = "product-text";
+    textBox.hidden = false;
+  } else if (Array.isArray(content)) {
     textBox.textContent = content.filter((b) => b.type === "text").map((b) => b.text).join("\n\n");
     textBox.className = `product-text${body.result.isError ? " error" : ""}`;
     textBox.hidden = false;
@@ -393,7 +420,7 @@ const PRESETS = {
   }),
   ping: () => ({ jsonrpc: "2.0", id: nextId++, method: "ping" }),
   unknown: () => call("addToBasket", { productId: "7615436" }),
-  invalid: () => call("search", { query: "", limit: 999 }),
+  invalid: () => call("getProducts", { id: "../etc/passwd" }),
   batch: () => [{ jsonrpc: "2.0", id: 1, method: "tools/list" }, { jsonrpc: "2.0", id: 2, method: "ping" }],
 };
 
@@ -438,8 +465,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
   $("tab-products").addEventListener("submit", (e) => {
     e.preventDefault();
-    const ids = $("ids").value.split(",").map((s) => s.trim()).filter(Boolean);
-    send(call("getProducts", { ids }));
+    send(call("getProducts", { id: $("ids").value.trim() }));
   });
   $("tab-raw").addEventListener("submit", (e) => {
     e.preventDefault();

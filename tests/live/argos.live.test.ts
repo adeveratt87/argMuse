@@ -33,15 +33,14 @@ describe.skipIf(!LIVE)("LIVE Argos MCP upstream", () => {
     const session = upstream.session(signal);
     try {
       const search = await runSearch({ query: "kettle", limit: 5 }, session, signal);
-      expect(search.isError).toBe(false);
-      const text = search.content.map((b) => (b.type === "text" ? b.text : "")).join("\n");
-      const id = /ID:\s*([A-Za-z0-9]+)/.exec(text)?.[1];
-      expect(id, "search output no longer matches 'ID: x, Product: y, Price: z'").toBeTruthy();
+      expect(search.isError, JSON.stringify(search.content)).toBeFalsy();
+      const products = (search.structuredContent as { products: { id: string }[] }).products;
+      expect(products.length, "search parsed no products").toBeGreaterThan(0);
+      const id = products[0]!.id;
 
-      const detail = await runGetProducts({ ids: [id!] }, session, signal);
-      expect(detail.isError).toBe(false);
-      const d = detail.content.map((b) => (b.type === "text" ? b.text : "")).join("\n");
-      expect(d).toContain(`Product Information for ${id}`);
+      const detail = await runGetProducts({ id }, session, signal);
+      expect(detail.isError, JSON.stringify(detail.content)).toBeFalsy();
+      expect((detail.structuredContent as { product: { id: string; name: string } }).product.id).toBe(id);
     } finally {
       await session.close();
     }

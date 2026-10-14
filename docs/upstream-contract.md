@@ -97,6 +97,15 @@ Whether the upstream exposes other tools (basket, account, etc.) is **UNKNOWN**.
 connector is designed to make this irrelevant: it has a hard-coded allowlist and never
 forwards unknown tool names.
 
+### 3.5 Observed through the deployed connector (2026-10-14)
+
+Evidence: the playground's rendered results, as described by the project owner. Raw JSON was not captured.
+
+- Live calls from Vercel to Argos succeed **without credentials**. Sign-in through WorkOS and `search` both work end to end.
+- `searchProducts` text includes `Search Results` and `Total Products Found: 18` header lines. **Whether 18 is the total number of matches or the number returned is unverified.**
+- Search IDs include lowercase alphanumeric marketplace IDs (e.g. `hm128582`).
+- `fetchProduct` for `8444015` included a promotional badge `VALUE_20_pc_spooky20`. **The exact label wording of that line is unverified**; the parser accepts several spellings.
+
 ## 4. Errors, limits and behaviour
 
 | Scenario | Finding |
