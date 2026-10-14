@@ -13,50 +13,85 @@ Common properties:
 | Auth | Valid bearer JWT from the configured authorization server, carrying `AUTH_REQUIRED_SCOPES`. Scope names are **BLOCKED** pending AS decision. |
 | Rate limits | Per validated subject: `RATE_LIMIT_PER_SUBJECT_PER_MINUTE` (default 60). Global: `RATE_LIMIT_GLOBAL_PER_MINUTE` (default 600). Per Vercel instance. |
 | Data sensitivity | Inputs: search text may contain personal data typed by the user (not logged). Outputs: public catalogue data. |
-| Output | MCP `content` text blocks only. Upstream text is passed through unchanged except for control-character stripping and size caps (20,000 chars per block, 100,000 total, marked `[truncated by connector]`). |
-| Freshness | Live upstream call on every request; the connector does no caching. The upstream gives no freshness metadata, so none is added. |
-
-## `search`
+| Output | `structuredContent` matching the advertised `outputSchema` (validated by the SDK before sending), plus one text block containing the same result as JSON for clients that ignore structured output. Error results carry text only. |
+| Freshness | Live upstream call on every request; the connector does no caching. The upstream gives no freshness metadat## `search`
 
 Search the Argos (UK) product catalogue by keywords.
 
-**Input schema** (JSON Schema as advertised in `tools/list`; `additionalProperties: false`):
+**Input** (`additionalProperties: false`):
 
 | Field | Type | Rules |
 |---|---|---|
 | `query` | string, required | Trimmed; 1–200 chars; no control characters |
-| `limit` | integer, optional | 1–50; default 20 (connector policy, since the upstream maximum is unknown) |
+| `limit` | integer, optional | 1–50; default 20 |
 
-**Upstream mapping:** `searchProducts` with `{ query, limit }`.
+**Upstream:** `searchProducts { query, limit }`.
 
-**Output:** upstream text blocks, e.g. a line in the form
-`ID: 7615436, Product: <name>, Price: 119.0` (format as recorded by the reference client).
-If upstream returns no text blocks, the connector returns
-`"No products were returned by Argos for this search."` with `isError: false`.
+**Output schema:**
+
+```json
+{
+  "products": [
+    { "id": "hm128582", "name": "Quest 1.7L Cordless Kettle - Grey", "price": 15.99,
+      "currency": "GBP", "url": "https://argos.co.uk/product/hm128582/" }
+  ],
+  "totalCount": 18
+}
+```
+
+| Field | Source | Rule |
+|---|---|---|
+| `id`, `name` | `ID: …, Product: …` line | Name keeps commas; control characters stripped |
+| `price` | `Price: …` | Number; `null` if absent. Never 0 for missing |
+| `currency` | — | `GBP` whenever `price` is set (Argos is UK-only); `null` otherwise |
+| `url` | derived | `https://argos.co.uk/product/{id}/`, the form Argos's own `fetchProduct` links use (approved rule) |
+| `totalCount` | `Total Products Found: N` | As reported by Argos; `null` if Argos doesn't report it. **Whether N is total matches or the returned count is not yet verified** |
+
+An empty search returns `{ "products": [], "totalCount": null }` (not an error).
 
 ## `getProducts`
 
-Get product details for 1–10 Argos product IDs.
+Get details for **one** Argos product.
 
-**Input schema** (`additionalProperties: false`):
+**Input:** `{ "id": string }`, 1–20 letters/digits (numeric Argos IDs and marketplace IDs such as `hm128582`).
 
-| Field | Type | Rules |
+**Upstream:** `fetchProduct { state: id }`.
+
+**Output schema:**
+
+```json
+{
+  "product": {
+    "id": "8444015",
+    "name": "Argos Home Mouse In Skeleton Felt Hanging Decoration",
+    "url": "https://argos.co.uk/product/8444015/",
+    "description": "Mice to meet you. …\nNot suitable for children under 3 years old.\nSize H11, W11, D8cm.",
+    "price": 5,
+    "currency": "GBP",
+    "promotion": { "code": "VALUE_20_pc_spooky20", "label": null }
+  }
+}
+```
+
+| Field | Source | Rule |
 |---|---|---|
-| `ids` | string[], required | 1–10 items; each 1–20 letters/digits (numeric Argos IDs and alphanumeric marketplace SKUs). Duplicates removed. |
+| `name` | `Name:` | Required; if details exist without a name → parse error |
+| `url` | `Link:` | Must be https on `argos.co.uk`/`www.argos.co.uk`, otherwise parse error. If Argos gives no link, it is derived from the ID |
+| `description` | `Description:` (HTML) | Converted to plain text: scripts/styles/comments/iframes removed with their content, paragraphs and `<br>` become line breaks, `<li>` become `• ` bullets, entities decoded, `Â£` mojibake fixed, capped at 5,000 chars. Warnings, ages and dimensions are kept |
+| `price`, `currency` | `Price:` | As for search; an unreadable price is a parse error |
+| `promotion` | badge line (`Promotional badge:`, `Badge:`, `Promotion:`…) | `code` passed through exactly; `label` is always `null` (no verified mapping). No discount is ever inferred |
 
-**Upstream mapping:** one `fetchProduct` call per ID with `{ state: "<id>" }`, at most 4 in
-parallel on a single upstream session.
+If Argos returns nothing recognisable, the result is an error: "Argos returned no details for product {id}…" (likely not found).
 
-**Output:** for each ID, the upstream text blocks (e.g. `Product Information for …`,
-`Name: …`, `Link: …`, `Description: <HTML>`, `Price: …`). Partial failures produce a
-per-ID line, `Product <id>: could not be retrieved. <safe reason>` or
-`Product <id>: no details were returned by Argos.` `isError` is `true` only when every ID
+ when every ID
 failed.
 
 ## Errors
 
 | Situation | Response |
 |---|---|
+| Argos text in an unexpected format | `isError: true`, "Argos returned product data in an unexpected format… (reference: …)". Logged as `tool.parse_error` with a reason. No partial data is returned |
+| Argos tool-level error (`isError`) | Passed through as an error, never as an empty result |
 | Invalid arguments / unknown argument | Tool result `isError: true`, `MCP error -32602: Input validation error: …` (SDK). No upstream call. |
 | Unknown tool name | Tool result `isError: true`, `MCP error -32602: Tool <name> not found`. No upstream call. |
 | Upstream timeout | `isError: true`, "did not respond in time… (reference: <correlation id>)" |

@@ -103,7 +103,8 @@ describe("tool input mapping", () => {
     expect(toUpstreamFetchArgs("FTAH5B29")).toEqual({ state: "FTAH5B29" });
   });
   it("getProducts accepts numeric and alphanumeric IDs", () => {
-    expect(getProductsInput.parse({ ids: ["7482652", "FTAH5B29"] }).ids).toHaveLength(2);
+    expect(getProductsInput.parse({ id: "7482652" }).id).toBe("7482652");
+    expect(getProductsInput.parse({ id: "hm128582" }).id).toBe("hm128582");
   });
 });
 
