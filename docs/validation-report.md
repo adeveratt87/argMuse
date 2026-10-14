@@ -10,7 +10,7 @@ Only results from commands actually run are recorded here.
 |---|---|
 | `npm run typecheck` (`tsc --noEmit`, strict) | ✅ PASS (exit 0) |
 | `npm run lint` (ESLint 10 + typescript-eslint) | ✅ PASS (exit 0, no findings) |
-| `npm run build` | ✅ PASS (exit 0) |
+| `npm run build` (now `npm run compile`) | ✅ PASS (exit 0) |
 | `npm test` | ✅ **116 passed**, 2 skipped (live, gated), 0 failed |
 | — `tests/unit` | ✅ 32 passed |
 | — `tests/auth` | ✅ 27 passed |
@@ -32,7 +32,7 @@ Only results from commands actually run are recorded here.
 | `getProducts` discovered with the verified schema | 🟡 PARTIAL | As above |
 | No unapproved tools exposed | ✅ PASS | `tools/list` = exactly 2; upstream-only tools (`searchProducts`, `fetchProducts`, `addToBasket`) rejected without upstream contact |
 | Returned product facts match upstream data | 🟡 PARTIAL | Pass-through verified byte-for-byte against mock fixtures; not against live data |
-| Auth validated using a confirmed provider configuration | ⛔ BLOCKED | Generic JWT validation tested; no provider confirmed (B2) |
+| Auth validated using a confirmed provider configuration | ⛔ BLOCKED | Generic JWT validation tested; decided on a dedicated hosted provider, vendor not yet chosen (B2) |
 | Invalid credentials rejected before upstream execution | ✅ PASS | 10 token-failure cases + malformed headers; mock records zero upstream requests |
 | Tenant identity cannot be spoofed | ✅ PASS | Identity from validated `sub` only. `X-User-Context`/tenant headers ignored, not forwarded, and do not affect rate-limit keys |
 | Tokens/sensitive data not in logs or URLs | ✅ PASS | Log-capture test; query-string tokens rejected; redaction unit tests |
@@ -42,7 +42,7 @@ Only results from commands actually run are recorded here.
 | Timeouts, rate limits, payload limits tested | ✅ PASS | connect/call timeouts; per-subject + global 429 with Retry-After; 413 declared + streamed |
 | No purchasing / account mutation exposed | ✅ PASS | Allowlist at both MCP server and upstream client; tests |
 | Security checks and dependency auditing | 🟡 PARTIAL | npm audit clean; pattern scan clean; gitleaks configured in CI but not yet run |
-| Deployment and rollback instructions tested | ⛔ BLOCKED | Written, not executed (no Vercel project decision) |
+| Deployment and rollback instructions tested | ⛔ BLOCKED | Written, not executed. Project decided (dedicated); creation failed 403 from the build session |
 | Privacy and data-flow documentation reviewed | ⛔ BLOCKED | Draft written; human review required |
 | Meta submission artefacts prepared | 🟡 PARTIAL | Checklist and tool catalogue; Argos-owned items outstanding |
 | Final test report identifies pass/fail/blocked | ✅ | This document |

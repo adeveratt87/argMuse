@@ -8,14 +8,14 @@
     "node": ">=22"
   },
   "scripts": {
-    "build": "rm -rf dist && tsc -p tsconfig.json",
+    "compile": "rm -rf dist && tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint .",
     "test": "vitest run",
     "test:live": "ARGOS_LIVE_TESTS=1 vitest run tests/live",
-    "dev": "npm run build && node dist/scripts/dev-server.js",
-    "audit": "npm audit --omit=dev",
-    "discover": "npm run build && node dist/scripts/discover-upstream.js"
+    "dev": "npm run compile && node dist/scripts/dev-server.js",
+    "discover": "npm run compile && node dist/scripts/discover-upstream.js",
+    "audit": "npm audit --omit=dev"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.32.1",

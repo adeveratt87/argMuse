@@ -1,7 +1,7 @@
 /**
  * Prints the live upstream tools/list result as JSON, for recording in
  * docs/fixtures/upstream-tools-list.json. Read-only: calls tools/list only.
- *   npm run build && node dist/scripts/discover-upstream.js > docs/fixtures/upstream-tools-list.json
+ *   npm run discover > docs/fixtures/upstream-tools-list.json
  */
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";

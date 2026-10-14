@@ -51,14 +51,21 @@ See [`docs/deployment.md`](docs/deployment.md). Privacy: [`docs/data-flow-and-pr
 Meta: [`docs/meta-submission-checklist.md`](docs/meta-submission-checklist.md).
 Latest results: [`docs/validation-report.md`](docs/validation-report.md).
 
-## Blockers and decisions needing human approval
+## Decisions (2026-10-14)
 
-| # | Item | Why it matters | Who / what unblocks it |
-|---|---|---|---|
-| B1 | **Tool name mapping.** CLAUDE.md names `search`/`getProducts`, but the only evidenced upstream tools are `searchProducts`/`fetchProduct`/`fetchProducts`. The connector exposes the CLAUDE.md names and maps them as shown above. | If Argos has a different intended mapping (e.g. `fetchProducts` batch), behaviour changes | Product owner approves mapping; live `tools/list` confirms names |
-| B2 | **Authorization server.** `identity.argos.co.uk/oauth/tokeninfo` is unverified and was not implemented. The connector validates JWTs from *any* configured OAuth 2.1 AS, but none is chosen. | `/mcp` returns 503 until configured | Argos identity team picks the AS (and whether Muse users sign in with Argos accounts at all), defines scopes, registers Muse as a client. If the AS issues opaque tokens, introspection (RFC 7662) must be added. |
-| B3 | **Meta requirements unverified.** Official Meta/Muse docs could not be fetched, and secondary sources conflict on transport and auth details. | Built to the most-cited profile; may need changes | Someone with portal access confirms requirements |
-| B4 | **Live upstream contract.** Egress to `api.argos.co.uk` is blocked in the build environment. Schemas, limits, error behaviour and side-effect-freedom are from the reference client only. | Input limits and error mapping are provisional | Allow the host in environment network settings and run `npm run test:live` + `npm run discover`, or capture `/api/debug/mcp` output from the EEAT studio |
-| B5 | **Authorisation to re-expose Argos data** to Meta via a third-party connector, plus branding, terms, privacy policy, support/security contacts. | Required for submission | Argos service owner, legal, brand |
-| B6 | **Durable rate limiting.** Limits are per Vercel instance. | Global limits are approximate under scale-out | Decide whether a shared store (e.g. Redis) is warranted |
-| B7 | **Public-data alternative.** Upstream appears to need no credentials and serves public catalogue data. An authless connector would be simpler, but CLAUDE.md requires authentication, so it was not built. | Scope/complexity trade-off | Product/security decision |
+| # | Decision | Status |
+|---|---|---|
+| D-1 | **Tool mapping approved:** `search` → `searchProducts`, `getProducts` → `fetchProduct` (one call per ID) | ✅ Decided. Still to be confirmed against the live `tools/list` (B4) |
+| D-2 | **Login: dedicated hosted OAuth provider** for this connector (not Argos customer accounts). Single scope `products:read`, ~1 h access tokens with refresh. Muse requires OAuth. | ✅ Decided. Vendor and tenant still to be chosen (B2) |
+| D-3 | **Hosting: a dedicated Vercel project for the argMuse repo**, separate from the EEAT studio. Preview deployments act as staging. | ✅ Decided. Project not yet created (B5) |
+| D-4 | **Rate limits:** per-instance in-app limits plus a Vercel Firewall per-IP rule | ✅ Decided (firewall rule in docs/deployment.md) |
+
+## Open blockers
+
+| # | Item | Who / what unblocks it |
+|---|---|---|
+| B2 | **Choose the OAuth provider and set it up.** It must issue JWT access tokens with audience `https://<connector>/mcp` (RFC 8707 resource indicators). It must support authorization code + PKCE S256, and dynamic client registration or Client ID Metadata Documents for Muse. Muse's redirect URIs must be allowed. Define the scope `products:read`. | Pick a vendor (e.g. Auth0/Okta), then set `AUTH_ISSUER`, `AUTH_JWKS_URL`, `AUTH_REQUIRED_SCOPES=products:read` in Vercel. If the vendor only issues opaque tokens, introspection must be added. |
+| B3 | **Confirm Meta/Muse requirements on the official portal:** client registration method, redirect URIs, resource parameter, transport | Someone with Meta portal access |
+| B4 | **Live upstream contract** (egress to `api.argos.co.uk` is blocked in the build environment) | Allow the host in this environment's network settings, then `npm run test:live` / `npm run discover` |
+| B5 | **Create the Vercel project.** The session's Vercel connection got `403 forbidden` on project creation. | Team owner imports `adeveratt87/argMuse` in Vercel (steps in docs/deployment.md) |
+| B6 | **Argos authorisation** to expose the service via Meta, plus branding, terms, privacy policy, support/security contacts | Argos service owner, legal, brand |

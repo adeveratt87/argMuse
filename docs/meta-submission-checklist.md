@@ -25,7 +25,7 @@ resource server, and RFC 9728 metadata. It contains no Meta-specific logic.
 |---|---|
 | Confirm programme eligibility and requirements on the official portal | ⛔ BLOCKED (docs unreachable) |
 | Written authorisation from Argos to expose this service via Meta | ⛔ BLOCKED |
-| Authorization server chosen; scopes defined; Muse registered as a client | ⛔ BLOCKED |
+| Authorization server chosen; scopes defined; Muse registered as a client | 🟡 Decided: dedicated hosted provider, scope `products:read`; vendor + Muse client registration pending |
 | Connector overview and use cases | ✅ README.md |
 | Tool catalogue (schemas, classification, errors, limits) | ✅ docs/tool-catalogue.md (schemas provisional until live verification) |
 | Endpoint + auth configuration | 🟡 Documented; no deployed URL yet |
