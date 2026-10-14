@@ -56,7 +56,7 @@ Latest results: [`docs/validation-report.md`](docs/validation-report.md).
 | # | Decision | Status |
 |---|---|---|
 | D-1 | **Tool mapping approved:** `search` → `searchProducts`, `getProducts` → `fetchProduct` (one call per ID) | ✅ Decided. Still to be confirmed against the live `tools/list` (B4) |
-| D-2 | **Login: dedicated hosted OAuth provider** for this connector (not Argos customer accounts). Single scope `products:read`, ~1 h access tokens with refresh. Muse requires OAuth. | ✅ Decided. Vendor and tenant still to be chosen (B2) |
+| D-2 | **Login: WorkOS AuthKit** (dedicated, free tier), not Argos customer accounts. Staging environment `propitious-coral-38-staging.authkit.app`: email + password sign-in, CIMD and dynamic registration enabled, MCP resource `https://argmuse.vercel.app/mcp`. AuthKit offers no custom scopes (`openid profile email offline_access` only), so `AUTH_REQUIRED_SCOPES` is empty. Access is bounded by issuer, signature, audience and expiry. | ✅ Configured in WorkOS (metadata checked 2026-10-14). Not yet tested with a real token |
 | D-3 | **Hosting: a dedicated Vercel project for the argMuse repo**, separate from the EEAT studio. Preview deployments act as staging. | ✅ Decided. Project not yet created (B5) |
 | D-4 | **Rate limits:** per-instance in-app limits plus a Vercel Firewall per-IP rule | ✅ Decided (firewall rule in docs/deployment.md) |
 
@@ -64,7 +64,7 @@ Latest results: [`docs/validation-report.md`](docs/validation-report.md).
 
 | # | Item | Who / what unblocks it |
 |---|---|---|
-| B2 | **Choose the OAuth provider and set it up.** It must issue JWT access tokens with audience `https://<connector>/mcp` (RFC 8707 resource indicators). It must support authorization code + PKCE S256, and dynamic client registration or Client ID Metadata Documents for Muse. Muse's redirect URIs must be allowed. Define the scope `products:read`. | Pick a vendor (e.g. Auth0/Okta), then set `AUTH_ISSUER`, `AUTH_JWKS_URL`, `AUTH_REQUIRED_SCOPES=products:read` in Vercel. If the vendor only issues opaque tokens, introspection must be added. |
+| B2 | **End-to-end token test.** Deploy with the WorkOS values (docs/deployment.md), complete a sign-in through an MCP client, and confirm the connector accepts the token (`aud` = resource URL). If the Vercel URL is not `argmuse.vercel.app`, update the WorkOS MCP resource to match. | Vercel project (B5), then a test sign-in |
 | B3 | **Confirm Meta/Muse requirements on the official portal:** client registration method, redirect URIs, resource parameter, transport | Someone with Meta portal access |
 | B4 | **Live upstream contract** (egress to `api.argos.co.uk` is blocked in the build environment) | Allow the host in this environment's network settings, then `npm run test:live` / `npm run discover` |
 | B5 | **Create the Vercel project.** The session's Vercel connection got `403 forbidden` on project creation. | Team owner imports `adeveratt87/argMuse` in Vercel (steps in docs/deployment.md) |

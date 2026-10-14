@@ -15,7 +15,10 @@
 3. Root directory: repository root. Node.js version: 22.x.
 4. Environment variables (Preview + Production), then deploy:
    - `PUBLIC_BASE_URL` = the project's URL, e.g. `https://argmuse.vercel.app` (no trailing slash)
-   - leave the `AUTH_*` variables unset until the provider exists. `/mcp` will answer 503 (fail closed).
+   - `AUTH_ISSUER` = `https://propitious-coral-38-staging.authkit.app` (WorkOS staging; exact `issuer` from its metadata, no trailing slash)
+   - `AUTH_JWKS_URL` = `https://propitious-coral-38-staging.authkit.app/oauth2/jwks`
+   - leave `AUTH_AUDIENCE` unset (defaults to `${PUBLIC_BASE_URL}/mcp`, which must equal the WorkOS MCP resource) and `AUTH_REQUIRED_SCOPES` empty (AuthKit has no custom scopes)
+   - for production, create a WorkOS production environment and swap both `AUTH_*` values
 5. Branch `claude/muse-connector` (until merged) creates preview deployments. These are staging.
 6. Deployment Protection: keep it on for previews. Production must be publicly reachable
    for Muse, and is protected by OAuth.
