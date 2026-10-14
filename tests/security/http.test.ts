@@ -133,3 +133,30 @@ describe("no secrets in logs or responses", () => {
     }
   });
 });
+
+describe("playground support", () => {
+  it("allows the connector's own origin without configuring ALLOWED_ORIGINS", async () => {
+    const app = await createTestApp({ upstream: { tool } });
+    const res = await app.rpc(CALL_SEARCH(1), { Origin: BASE, Authorization: `Bearer ${await app.tokens.sign()}` });
+    expect(res.status).toBe(200);
+    const other = await app.rpc(CALL_SEARCH(1), { Origin: "https://argmuse.vercel.app.evil.example", Authorization: `Bearer ${await app.tokens.sign()}` });
+    expect(other.status).toBe(403);
+  });
+
+  it("serves a Client ID Metadata Document whose client_id is its own URL", async () => {
+    const app = await createTestApp();
+    const res = await app.handlers.route(new Request(`${BASE}/oauth/client-metadata.json`));
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({
+      client_id: `${BASE}/oauth/client-metadata.json`,
+      client_name: "argMuse Playground",
+      client_uri: `${BASE}/`,
+      redirect_uris: [`${BASE}/`],
+      grant_types: ["authorization_code", "refresh_token"],
+      response_types: ["code"],
+      token_endpoint_auth_method: "none",
+    });
+    const post = await app.handlers.route(new Request(`${BASE}/oauth/client-metadata.json`, { method: "POST" }));
+    expect(post.status).toBe(405);
+  });
+});

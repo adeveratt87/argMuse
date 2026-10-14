@@ -81,8 +81,9 @@ export function createHandlers(deps: AppDeps) {
       );
     }
 
-    // 2. Origin (DNS-rebinding protection; not authentication).
-    if (!isOriginAllowed(req.headers.get("origin"), config.allowedOrigins)) {
+    // 2. Origin (DNS-rebinding protection; not authentication). The connector's
+    // own origin is always allowed so the same-origin playground page works.
+    if (!isOriginAllowed(req.headers.get("origin"), [config.publicBaseUrl.origin, ...config.allowedOrigins])) {
       return finish(errorResponse(403, "Origin not allowed", correlationId));
     }
 
@@ -198,6 +199,30 @@ export function createHandlers(deps: AppDeps) {
     });
   }
 
+  /**
+   * OAuth Client ID Metadata Document for the browser playground (public/).
+   * The document's own URL is the client_id, so an authorization server that
+   * supports CIMD can identify the playground without prior registration.
+   */
+  function handleClientMetadata(req: Request): Response {
+    const correlationId = randomUUID();
+    if (req.method !== "GET") return errorResponse(405, "Method not allowed", correlationId, { headers: { Allow: "GET" } });
+    const origin = config.publicBaseUrl.origin;
+    const body = {
+      client_id: `${origin}/oauth/client-metadata.json`,
+      client_name: "argMuse Playground",
+      client_uri: `${origin}/`,
+      redirect_uris: [`${origin}/`],
+      grant_types: ["authorization_code", "refresh_token"],
+      response_types: ["code"],
+      token_endpoint_auth_method: "none",
+    };
+    return new Response(JSON.stringify(body), {
+      status: 200,
+      headers: { "Content-Type": "application/json", ...baseHeaders(correlationId), "Cache-Control": "public, max-age=300" },
+    });
+  }
+
   /** Path router used by the local dev server and tests (Vercel routes by file). */
   async function route(req: Request): Promise<Response> {
     const { pathname } = new URL(req.url);
@@ -206,8 +231,9 @@ export function createHandlers(deps: AppDeps) {
       return handleProtectedResourceMetadata(req);
     }
     if (pathname === "/health" || pathname === "/api/health") return handleHealth(req);
+    if (pathname === "/oauth/client-metadata.json" || pathname === "/api/client-metadata") return handleClientMetadata(req);
     return errorResponse(404, "Not found", randomUUID());
   }
 
-  return { handleMcp, handleProtectedResourceMetadata, handleHealth, route };
+  return { handleMcp, handleProtectedResourceMetadata, handleHealth, handleClientMetadata, route };
 }

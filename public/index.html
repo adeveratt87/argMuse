@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>argMuse Playground</title>
+  <link rel="stylesheet" href="/playground.css">
+  <script src="/playground.js" defer></script>
+</head>
+<body>
+  <header class="top">
+    <div>
+      <h1>argMuse Playground</h1>
+      <p class="muted">Test console for the Argos MCP connector at <code id="base-url"></code>. Read-only tools; no purchases.</p>
+    </div>
+  </header>
+
+  <main>
+    <section class="card" aria-labelledby="checks-h">
+      <div class="card-head">
+        <h2 id="checks-h">1 · Endpoint checks</h2>
+        <button id="run-checks" class="btn">Run checks</button>
+      </div>
+      <p class="muted">Calls each public endpoint and checks the response matches what Muse expects.</p>
+      <ul id="checks" class="checks"></ul>
+    </section>
+
+    <section class="card" aria-labelledby="auth-h">
+      <div class="card-head">
+        <h2 id="auth-h">2 · Sign in</h2>
+        <span id="auth-pill" class="pill">Signed out</span>
+      </div>
+      <p class="muted">Runs the same OAuth flow Muse uses: discovery → authorization code with PKCE → token for <code id="resource-url"></code>.</p>
+      <div class="row">
+        <label class="field">Client registration
+          <select id="reg-mode">
+            <option value="cimd">Client ID Metadata Document</option>
+            <option value="dcr">Dynamic Client Registration</option>
+          </select>
+        </label>
+      </div>
+      <div class="row">
+        <button id="sign-in" class="btn primary">Sign in with WorkOS</button>
+        <button id="refresh" class="btn" disabled>Refresh token</button>
+        <button id="sign-out" class="btn" disabled>Sign out</button>
+      </div>
+      <dl id="claims" class="claims" hidden></dl>
+      <details class="paste">
+        <summary>Paste an access token instead</summary>
+        <textarea id="paste-token" rows="3" placeholder="eyJ…" spellcheck="false" autocomplete="off"></textarea>
+        <button id="use-token" class="btn">Use token</button>
+      </details>
+      <p id="auth-msg" class="msg" role="status"></p>
+    </section>
+
+    <section class="card" aria-labelledby="tools-h">
+      <h2 id="tools-h">3 · Try the tools</h2>
+      <div class="tabs" role="tablist">
+        <button role="tab" data-tab="search" aria-selected="true">search</button>
+        <button role="tab" data-tab="products" aria-selected="false">getProducts</button>
+        <button role="tab" data-tab="raw" aria-selected="false">Raw JSON-RPC</button>
+      </div>
+
+      <form id="tab-search" class="tab" data-panel="search">
+        <label class="field">Query
+          <input id="q" value="cordless kettle" maxlength="200" autocomplete="off">
+        </label>
+        <label class="field narrow">Limit
+          <input id="limit" type="number" min="1" max="50" value="5">
+        </label>
+        <button class="btn primary" type="submit">Search</button>
+      </form>
+
+      <form id="tab-products" class="tab" data-panel="products" hidden>
+        <label class="field">Product IDs (comma-separated, up to 10)
+          <input id="ids" value="7615436" autocomplete="off">
+        </label>
+        <button class="btn primary" type="submit">Get products</button>
+      </form>
+
+      <form id="tab-raw" class="tab" data-panel="raw" hidden>
+        <label class="field">Preset
+          <select id="preset">
+            <option value="list">tools/list</option>
+            <option value="init">initialize</option>
+            <option value="ping">ping</option>
+            <option value="unknown">Unknown tool (should be rejected)</option>
+            <option value="invalid">Invalid arguments (should be rejected)</option>
+            <option value="batch">Batch request (should be rejected)</option>
+          </select>
+        </label>
+        <label class="field">Request body
+          <textarea id="raw" rows="7" spellcheck="false"></textarea>
+        </label>
+        <label class="check"><input id="raw-noauth" type="checkbox"> Send without token</label>
+        <button class="btn primary" type="submit">Send</button>
+      </form>
+    </section>
+
+    <section class="card" aria-labelledby="resp-h">
+      <div class="card-head">
+        <h2 id="resp-h">4 · Response</h2>
+        <span id="resp-meta" class="muted small"></span>
+      </div>
+      <div id="resp-text" class="product-text" hidden></div>
+      <pre id="resp-body" class="code">Nothing sent yet.</pre>
+    </section>
+  </main>
+
+  <footer class="muted small">
+    Tokens are kept in this tab only (sessionStorage) and sent only to this connector and the sign-in server.
+    Product text comes from Argos and is shown as plain text.
+  </footer>
+</body>
+</html>
